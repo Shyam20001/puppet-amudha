@@ -1,0 +1,99 @@
+doctype html
+html(lang="en")
+  head
+    meta(charset="UTF-8")
+    meta(name="viewport", content="width=device-width, initial-scale=1.0")
+    title Shyam-Model_Data
+    script(src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js") // Include Axios for HTTP requests
+    style.
+      .message {
+        margin-bottom: 10px;
+        padding: 10px;
+        border-radius: 5px;
+      }
+      .user {
+        background-color: #007bff;
+        color: #fff;
+      }
+      .gpt {
+        background-color: #28a745;
+        color: #fff;
+        position: relative;
+        text-size: 90px;
+      }
+      .gpt .copy-icon {
+        position: absolute;
+        top: 50%;
+        right: 10px;
+        transform: translateY(-50%);
+        cursor: pointer;
+        color: #000;
+      }
+      .gpt .copy-icon:hover {
+        color: #ffc107;
+      }
+      #message-form button {
+        transition: all 0.3s ease;
+      }
+      #message-form button:hover {
+        background-color: #007bff;
+        border-color: #007bff;
+        color: #fff;
+      }
+  body
+    div#chat-container
+      // Chat messages will be displayed here
+    form#message-form
+      .input-group.mb-3
+        input#user-message.form-control(type="text", placeholder="Type your message...", autocomplete="off")
+        .input-group-append
+          button.btn.btn-primary(type="submit") Send
+  script.
+    const chatContainer = document.getElementById('chat-container');
+    const messageForm = document.getElementById('message-form');
+    
+    messageForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        
+        const userMessage = document.getElementById('user-message').value;
+        appendMessage('user', userMessage);
+        
+        try {
+            const response = await axios.post('/chat', { message: userMessage });
+            const gptResponse = response.data.message;
+            appendMessage('gpt', gptResponse);
+        } catch (error) {
+            console.error('Error sending message:', error);
+            appendMessage('system', 'An error occurred. Please try again.');
+        }
+        
+        // Clear the input field after sending the message
+        document.getElementById('user-message').value = '';
+    });
+    
+    function appendMessage(role, content) {
+        const messageElement = document.createElement('div');
+        messageElement.classList.add('message', role);
+        messageElement.innerText = content;
+        
+        if (role === 'gpt') {
+            const copyIcon = document.createElement('i');
+            copyIcon.classList.add('far', 'fa-copy', 'copy-icon');
+            copyIcon.setAttribute('title', 'Copy text');
+            copyIcon.addEventListener('click', () => {
+                navigator.clipboard.writeText(content);
+                copyIcon.classList.remove('fa-copy');
+                copyIcon.classList.add('fa-check');
+                setTimeout(() => {
+                    copyIcon.classList.remove('fa-check');
+                    copyIcon.classList.add('fa-copy');
+                }, 1000);
+            });
+            messageElement.appendChild(copyIcon);
+        }
+        
+        chatContainer.appendChild(messageElement);
+        
+        // Scroll to the bottom of the chat container
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }

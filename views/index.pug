@@ -1,0 +1,28 @@
+doctype html
+html
+  head
+    title Enter Secret Key
+    style.
+      /* Add your CSS styles here */
+      .center {
+        text-align: center;
+        margin-top: 50px;
+      }
+      form {
+        display: inline-block;
+      }
+      input[type="text"] {
+        margin-right: 10px;
+      }
+  body
+    .center
+      h1 Enter Secret Key
+      form(id="secretForm", method="POST", action="/isauthenticated", autocomplete="off")
+        label(for="userval") Secret Key:
+        input(type="password", id="userval", name="userval", autocomplete="off")
+        button(type="submit") Submit
+
+
+    //- if authenticated
+    //-   form(id="logoutForm", method="POST", action="/logout", autocomplete="off")
+    //-     button(type="submit") Logout
