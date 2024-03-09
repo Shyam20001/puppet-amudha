@@ -34,6 +34,8 @@ html(lang="en")
       }
       #message-form button {
         transition: all 0.3s ease;
+        padding: 20px;
+        width: 100px;
       }
       #message-form button:hover {
         background-color: #007bff;
@@ -45,7 +47,7 @@ html(lang="en")
       // Chat messages will be displayed here
     form#message-form
       .input-group.mb-3
-        input#user-message.form-control(type="text", placeholder="Type your message...", autocomplete="off")
+        textarea#user-message.form-control(type="text", placeholder="Type your message...", autocomplete="off")
         .input-group-append
           button.btn.btn-primary(type="submit") Send
   script.
@@ -97,3 +99,6 @@ html(lang="en")
         // Scroll to the bottom of the chat container
         chatContainer.scrollTop = chatContainer.scrollHeight;
     }
+
+
+    // input#user-message.form-control(type="text", placeholder="Type your message...", autocomplete="off")
