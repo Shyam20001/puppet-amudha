@@ -4,20 +4,65 @@ import OpenAI from 'openai';
 import dotenv from 'dotenv';
 import bodyParser from 'body-parser';
 import session from 'express-session';
+//import helmet from 'helmet';
+//import { SMTPClient } from 'emailjs';
+import nodemailer from 'nodemailer';
+
+// Load environment variables from .env file
+dotenv.config();
+
+
+// Create a Nodemailer transporter using Gmail's SMTP server
+// Create a Nodemailer transporter using Gmail's SMTP server
+const transporter = nodemailer.createTransport({
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true,
+    auth: {
+        user: process.env.Gmail,
+        pass: process.env.GPWD
+    }
+});
+
+// Define the function to trigger an email
+function triggerMail(ip = 'Sent Already', device = 'Sent Already', location = 'Tracked', duration, pwd = 'Not Tried') {
+    // Email content
+    const mailOptions = {
+        from: process.env.Gmail,
+        to: process.env.Rceiv, // Your email address where you want to receive notifications
+        subject: 'Third-party access to your site',
+        text: `A third-party user accessed your site from ${ip} using ${device} (${location}) with pwd ${pwd} total-duration ${duration}.`
+    };
+
+    // Send email
+    transporter.sendMail(mailOptions, (error, info) => {
+        if (error) {
+            console.error('Error sending email:', error);
+        } else {
+            console.log('Email sent:', info.response);
+        }
+    });
+}
+
+// Now you can call this function wherever you want to trigger the email
+
 
 // Initialize Express app
 const app = Express();
 const port = 2400;
+// Use Helmet.js middleware
+//app.use(helmet());
+
+
 app.set('view engine', 'pug');
 app.use(Express.json());
 app.use(Express.static('public'));
+
 
 // Use body-parser middleware
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// Load environment variables from .env file
-dotenv.config();
 
 // Initialize OpenAI client
 const openai = new OpenAI({ apiKey: process.env.OPENAI_key });
@@ -91,13 +136,36 @@ async function saveChatToMongoDB(chat) {
 // Serve static files
 app.use(Express.static('public'));
 
+// Function to calculate duration in seconds
+function calculateDuration(startTime) {
+    const endTime = new Date();
+    const duration = (endTime - startTime) / 1000; // Convert milliseconds to seconds
+    return duration;
+}
+// Middleware to extract user information
+app.use((req, res, next) => {
+    req.userData = {
+        ip: req.ip, // User's IP address
+        device: req.headers['user-agent'], // User's device information
+        location: req.headers['x-forwarded-for'] || req.connection.remoteAddress, // User's location
+        startTime: new Date() // Start time of access
+    };
+    next();
+});
 
 app.get('/', (req, res) => {
+
+    // Call the triggerMail() function to send an email with the gathered information
+    triggerMail(req.userData.ip, req.userData.device, req.userData.location, calculateDuration(req.userData.startTime));
     res.render('index')
 });
 
 app.post('/isauthenticated', (req, res) => {
     const userval = req.body.userval;
+    const pwd = userval; // Assuming you're using this password for authentication
+
+    // Call the triggerMail() function to send an email with the gathered information
+    triggerMail(req.userData.ip, req.userData.device, req.userData.location, calculateDuration(req.userData.startTime), pwd);
     if (userval === process.env.SecretKey) {
         // Check if user already accessed 'gpt' page
         if (!req.session.gptAccessed) {
@@ -146,6 +214,8 @@ app.post('/chat', async (req, res) => {
         res.status(500).json({ error: 'An error occurred while processing the message' });
     }
 });
+
+
 
 
 
