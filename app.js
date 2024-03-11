@@ -4,12 +4,18 @@ import OpenAI from 'openai';
 import dotenv from 'dotenv';
 import bodyParser from 'body-parser';
 import session from 'express-session';
+import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from "@google/generative-ai";
 //import helmet from 'helmet';
 //import { SMTPClient } from 'emailjs';
 import nodemailer from 'nodemailer';
 
 // Load environment variables from .env file
 dotenv.config();
+
+//Gemini Credentials
+
+const MODEL_NAME = "gemini-1.0-pro";
+const API_KEY = process.env.GEMINI_key;
 
 
 // Create a Nodemailer transporter using Gmail's SMTP server
@@ -107,22 +113,48 @@ async function connectToMongoDB() {
 }
 
 // Function to save chat messages to MongoDB
-async function saveChatToMongoDB(chat) {
+// async function saveChatToMongoDB(chat) {
+//     let client;
+//     try {
+//         // Connect to MongoDB
+//         const { db, client: connectedClient } = await connectToMongoDB();
+//         client = connectedClient;
+
+//         // Get the collection
+//         const collection = db.collection('openai');
+
+//         // Insert the chat message into the collection
+//         const result = await collection.insertOne(chat);
+
+//         console.log('Chat saved to MongoDB:', result.insertedId);
+//     } catch (error) {
+//         console.error('Error saving chat to MongoDB:', error);
+//         throw error;
+//     } finally {
+//         // Disconnect the client
+//         if (client) {
+//             await client.close();
+//             console.log('MongoDB client disconnected');
+//         }
+//     }
+// }
+
+async function saveChatToMongoDB(chatData, collectionName) {
     let client;
     try {
         // Connect to MongoDB
         const { db, client: connectedClient } = await connectToMongoDB();
         client = connectedClient;
 
-        // Get the collection
-        const collection = db.collection('openai');
+        // Get the collection based on collectionName
+        const collection = db.collection(collectionName);
 
-        // Insert the chat message into the collection
-        const result = await collection.insertOne(chat);
+        // Insert the chat data into the collection
+        const result = await collection.insertOne(chatData);
 
-        console.log('Chat saved to MongoDB:', result.insertedId);
+        console.log(`Chat saved to MongoDB collection ${collectionName}:`, result.insertedId);
     } catch (error) {
-        console.error('Error saving chat to MongoDB:', error);
+        console.error(`Error saving chat to MongoDB collection ${collectionName}:`, error);
         throw error;
     } finally {
         // Disconnect the client
@@ -132,6 +164,7 @@ async function saveChatToMongoDB(chat) {
         }
     }
 }
+
 
 // Serve static files
 app.use(Express.static('public'));
@@ -202,13 +235,17 @@ app.post('/chat', async (req, res) => {
 
         // Send GPT AI response back to client
         res.json({ message: gptResponse });
+
+        // Prepare chat object for MongoDB
         const chat = {
             date: new Date(),
-            user: req.body.message,
-            gpt: completion.choices[0].message.content
+            user: userMessage,
+            gpt: gptResponse
         };
+
         // Save the chat to MongoDB
-        await saveChatToMongoDB(chat);
+        await saveChatToMongoDB(chat, 'openai');
+        // console.log('Chat saved to MongoDB collection openai:', chat);
     } catch (error) {
         console.error('Error processing message:', error);
         res.status(500).json({ error: 'An error occurred while processing the message' });
@@ -216,6 +253,64 @@ app.post('/chat', async (req, res) => {
 });
 
 
+// Gemini Ai
+
+app.post('/chat2', async (req, res) => {
+    const { message } = req.body;
+    const genAI = new GoogleGenerativeAI(API_KEY);
+    const model = genAI.getGenerativeModel({ model: MODEL_NAME });
+
+    const generationConfig = {
+        temperature: 0.9,
+        topK: 1,
+        topP: 1,
+        maxOutputTokens: 2048,
+    };
+
+    const safetySettings = [
+        {
+            category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+            threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+        },
+        {
+            category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+            threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+        },
+        {
+            category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+            threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+        },
+        {
+            category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+            threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+        },
+    ];
+
+    try {
+        const chat = model.startChat({
+            generationConfig,
+            safetySettings,
+            history: [],
+        });
+
+        const result = await chat.sendMessage(message);
+        const geminiResponse = result.response.text();
+
+        // Save relevant information to MongoDB
+        const chatData = {
+            userMessage: message,
+            geminiResponse: geminiResponse,
+            date: new Date() // Current date and time
+        };
+
+        // Save Gemini response in 'gemini' collection
+        await saveChatToMongoDB(chatData, 'gemini');
+        res.json({ message: geminiResponse });
+    } catch (error) {
+        console.error('Error processing message with Gemini AI:', error);
+        res.status(500).json({ error: 'An error occurred while processing the message with Gemini AI' });
+    }
+});
 
 
 
