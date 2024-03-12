@@ -1,6 +1,7 @@
 // Import required modules
 import Express from 'express';
 import OpenAI from 'openai';
+import axios from 'axios';
 import dotenv from 'dotenv';
 import bodyParser from 'body-parser';
 import session from 'express-session';
@@ -16,6 +17,10 @@ dotenv.config();
 
 const MODEL_NAME = "gemini-1.0-pro";
 const API_KEY = process.env.GEMINI_key;
+
+// Claude Credentials
+const apiKey = process.env.CLAUDEAI_key
+const apiUrl = 'https://api.anthropic.com/v1/complete';
 
 
 // Create a Nodemailer transporter using Gmail's SMTP server
@@ -309,6 +314,56 @@ app.post('/chat2', async (req, res) => {
     } catch (error) {
         console.error('Error processing message with Gemini AI:', error);
         res.status(500).json({ error: 'An error occurred while processing the message with Gemini AI' });
+    }
+});
+
+// Claude Route
+
+async function generateText(prompt) {
+    try {
+        const response = await axios.post(apiUrl, {
+            prompt: `\n\nHuman: ${prompt}\n\nAssistant:`, // Add "\n\nAssistant:" at the end of the prompt
+            model: 'claude-v1',
+            max_tokens_to_sample: 500,
+        }, {
+            headers: {
+                'Content-Type': 'application/json',
+                'X-API-Key': apiKey,
+                'anthropic-version': '2023-06-01',
+            },
+        });
+
+        const generatedText = response.data.completion;
+        return generatedText;
+    } catch (error) {
+        console.error('Error:', error.message);
+        if (error.response && error.response.data) {
+            console.error('Error Details:', error.response.data);
+        }
+        throw error;
+    }
+}
+
+app.post('/chat3', async (req, res) => {
+    const { message } = req.body;
+
+    try {
+        const responseText = await generateText(message);
+
+        // Save relevant information to MongoDB
+        const chatData = {
+            userMessage: message,
+            claudeResponse: responseText,
+            date: new Date() // Current date and time
+        };
+
+        // Save Claude AI response in 'claudeai' collection
+        await saveChatToMongoDB(chatData, 'claudeai');
+
+        res.json({ message: responseText });
+    } catch (error) {
+        console.error('Error processing message with Claude AI:', error);
+        res.status(500).json({ error: 'An error occurred while processing the message with Claude AI' });
     }
 });
 
