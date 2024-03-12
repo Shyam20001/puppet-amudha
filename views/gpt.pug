@@ -57,7 +57,7 @@ html(lang="en")
     const messageForm = document.getElementById('message-form');
     const sendButton = document.getElementById('send-button');
     const toggleRouteButton = document.getElementById('toggle-route-button');
-    let isChat2Route = false;
+    let activeRoute = '/chat';
     
     messageForm.addEventListener('submit', async (event) => {
         event.preventDefault();
@@ -66,13 +66,7 @@ html(lang="en")
         appendMessage('user', userMessage);
         
         try {
-            let response;
-            if (isChat2Route) {
-                response = await axios.post('/chat2', { message: userMessage });
-            } else {
-                response = await axios.post('/chat', { message: userMessage });
-            }
-            
+            const response = await axios.post(activeRoute, { message: userMessage });
             const gptResponse = response.data.message;
             appendMessage('gpt', gptResponse);
         } catch (error) {
@@ -85,11 +79,15 @@ html(lang="en")
     });
     
     toggleRouteButton.addEventListener('click', () => {
-        isChat2Route = !isChat2Route;
-        if (isChat2Route) {
+        if (activeRoute === '/chat') {
+            activeRoute = '/chat2';
             sendButton.innerText = 'Send (Chat2)';
+        } else if (activeRoute === '/chat2') {
+            activeRoute = '/chat3';
+            sendButton.innerText = 'Send (Chat3)';
         } else {
-            sendButton.innerText = 'Send';
+            activeRoute = '/chat';
+            sendButton.innerText = 'Send (Chat)';
         }
     });
     
@@ -119,4 +117,3 @@ html(lang="en")
         // Scroll to the bottom of the chat container
         chatContainer.scrollTop = chatContainer.scrollHeight;
     }
-
