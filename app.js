@@ -13,6 +13,9 @@ import nodemailer from 'nodemailer';
 // Load environment variables from .env file
 dotenv.config();
 
+//Server (CLOUD_PROVIDER_NAME)
+const provider = process.env.CLOUD_PROVIDER_NAME
+
 //Gemini Credentials
 
 const MODEL_NAME = "gemini-1.0-pro";
@@ -41,7 +44,7 @@ function triggerMail(ip = 'Sent Already', device = 'Sent Already', location = 'T
     const mailOptions = {
         from: process.env.Gmail,
         to: process.env.Rceiv, // Your email address where you want to receive notifications
-        subject: 'Third-party access to your site',
+        subject: `Third-party access to your site @${provider}`,
         text: `A third-party user accessed your site from ${ip} using ${device} (${location}) with pwd ${pwd} total-duration ${duration}.`
     };
 
@@ -367,6 +370,7 @@ app.post('/chat3', async (req, res) => {
         res.status(500).json({ error: 'An error occurred while processing the message with Claude AI' });
     }
 });
+
 
 
 
