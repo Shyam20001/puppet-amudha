@@ -60,7 +60,8 @@ function triggerMail(ip = 'Sent Already', device = 'Sent Already', location = 'T
 
 // Initialize Express app
 const app = Express();
-const port = 2400;
+const port = process.env.PORT
+const host =  process.env.HOST
 // Use Helmet.js middleware
 //app.use(helmet());
 
@@ -370,6 +371,6 @@ app.post('/chat3', async (req, res) => {
 
 
 // Start the server
-app.listen(port, () => {
-    console.log(`Server is running @http://localhost:${port}/`);
+app.listen(port,host, () => {
+    console.log(`Server is running @ http://localhost:${port}/`);
 });
