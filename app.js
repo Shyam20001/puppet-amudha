@@ -64,7 +64,7 @@ function triggerMail(ip = 'Sent Already', device = 'Sent Already', location = 'T
 // Initialize Express app
 const app = Express();
 const port = process.env.PORT
-const host =  process.env.HOST
+const host = process.env.HOST
 // Use Helmet.js middleware
 //app.use(helmet());
 
@@ -202,13 +202,48 @@ app.get('/', (req, res) => {
     res.render('index')
 });
 
+// app.post('/isauthenticated', (req, res) => {
+//     const userval = req.body.userval;
+//     const pwd = userval; // Assuming you're using this password for authentication
+
+//     // Call the triggerMail() function to send an email with the gathered information
+//     triggerMail(req.userData.ip, req.userData.device, req.userData.location, calculateDuration(req.userData.startTime), pwd);
+//     if (userval === process.env.SecretKey) {
+//         // Check if user already accessed 'gpt' page
+//         if (!req.session.gptAccessed) {
+//             // Set authenticated session variable
+//             req.session.authenticated = true;
+//             // Set flag indicating 'gpt' page is accessed
+//             req.session.gptAccessed = true;
+//             res.render('gpt');
+//         } else {
+//             // If 'gpt' page is already accessed, redirect to '/'
+//             res.redirect('/');
+//         }
+//     } else {
+//         res.redirect('/');
+//     }
+// });
+
+
+
+// Handle POST request for chat messages
+
+/**NEW USER LOGIN PORTAL */
 app.post('/isauthenticated', (req, res) => {
+    // Get the value of SecretKey from the environment variable
+    const secretKey = process.env.SecretKey;
+
+    // Split the value into individual passwords
+    const passwords = secretKey.split(",");
+
     const userval = req.body.userval;
-    const pwd = userval; // Assuming you're using this password for authentication
 
     // Call the triggerMail() function to send an email with the gathered information
-    triggerMail(req.userData.ip, req.userData.device, req.userData.location, calculateDuration(req.userData.startTime), pwd);
-    if (userval === process.env.SecretKey) {
+    triggerMail(req.userData.ip, req.userData.device, req.userData.location, calculateDuration(req.userData.startTime), userval);
+
+    // Check if the entered password matches any of the passwords
+    if (passwords.includes(userval)) {
         // Check if user already accessed 'gpt' page
         if (!req.session.gptAccessed) {
             // Set authenticated session variable
@@ -221,13 +256,11 @@ app.post('/isauthenticated', (req, res) => {
             res.redirect('/');
         }
     } else {
+        // If the entered password is not valid, redirect to '/'
         res.redirect('/');
     }
 });
 
-
-
-// Handle POST request for chat messages
 
 app.post('/chat', async (req, res) => {
     const userMessage = req.body.message;
@@ -374,7 +407,9 @@ app.post('/chat3', async (req, res) => {
 
 
 
+
 // Start the server
-app.listen(port,host, () => {
+
+app.listen(port, host, () => {
     console.log(`Server is running @ http://localhost:${port}/`);
 });
