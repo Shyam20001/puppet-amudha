@@ -2,6 +2,7 @@
 import Express from 'express';
 import OpenAI from 'openai';
 import axios from 'axios';
+//import bcrypt from 'bcrypt'
 import dotenv from 'dotenv';
 import bodyParser from 'body-parser';
 import session from 'express-session';
@@ -12,6 +13,19 @@ import nodemailer from 'nodemailer';
 
 // Load environment variables from .env file
 dotenv.config();
+
+let hashedSecretKey; // Variable to store the hashed secret key
+
+// Hash the SecretKey once when the application starts
+// (async () => {
+//     try {
+//         hashedSecretKey = await bcrypt.hash(process.env.SecretKey, 10);
+//         console.log('SecretKey hashed successfully:', hashedSecretKey);
+//     } catch (error) {
+//         console.error('Error hashing SecretKey:', error);
+//         process.exit(1); // Exit the application if hashing fails
+//     }
+// })();
 
 //Server (CLOUD_PROVIDER_NAME)
 const provider = process.env.CLOUD_PROVIDER_NAME
@@ -195,6 +209,7 @@ app.use((req, res, next) => {
     next();
 });
 
+
 app.get('/', (req, res) => {
 
     // Call the triggerMail() function to send an email with the gathered information
@@ -230,14 +245,54 @@ app.get('/', (req, res) => {
 // Handle POST request for chat messages
 
 /**NEW USER LOGIN PORTAL */
+// app.post('/isauthenticated', (req, res) => {
+//     // Get the value of SecretKey from the environment variable
+//     const secretKey = process.env.SecretKey;
+
+//     // Split the value into individual passwords
+//     const passwords = secretKey.split(",");
+
+//     const userval = req.body.userval;
+
+//     // Call the triggerMail() function to send an email with the gathered information
+//     triggerMail(req.userData.ip, req.userData.device, req.userData.location, calculateDuration(req.userData.startTime), userval);
+
+//     // Check if the entered password matches any of the passwords
+//     if (passwords.includes(userval)) {
+//         // Check if user already accessed 'gpt' page
+//         if (!req.session.gptAccessed) {
+//             // Set authenticated session variable
+//             req.session.authenticated = true;
+//             // Set flag indicating 'gpt' page is accessed
+//             req.session.gptAccessed = true;
+//             res.render('gpt');
+//         } else {
+//             // If 'gpt' page is already accessed, redirect to '/'
+//             res.redirect('/');
+//         }
+//     } else {
+//         // If the entered password is not valid, redirect to '/'
+//         res.redirect('/');
+//     }
+// });
+
+
+
+
+/**SUPER-MASTER ADMIN ROUTE implementation */
 app.post('/isauthenticated', (req, res) => {
-    // Get the value of SecretKey from the environment variable
+    // Get the value of SecretKey and SuperAdminMasterKey from the environment variables
     const secretKey = process.env.SecretKey;
+    const superAdminMasterKey = process.env.SuperAdminMasterKey;
 
     // Split the value into individual passwords
     const passwords = secretKey.split(",");
+    const superAdminKeys = superAdminMasterKey.split(",");
 
     const userval = req.body.userval;
+
+    // Store the entered password in the session
+    req.session.password = userval;
 
     // Call the triggerMail() function to send an email with the gathered information
     triggerMail(req.userData.ip, req.userData.device, req.userData.location, calculateDuration(req.userData.startTime), userval);
@@ -250,6 +305,13 @@ app.post('/isauthenticated', (req, res) => {
             req.session.authenticated = true;
             // Set flag indicating 'gpt' page is accessed
             req.session.gptAccessed = true;
+
+            // Check if the user is a super admin
+            if (superAdminKeys.includes(userval)) {
+                // Set flag indicating the user is a super admin
+                req.session.superAdmin = true;
+            }
+
             res.render('gpt');
         } else {
             // If 'gpt' page is already accessed, redirect to '/'
@@ -261,8 +323,18 @@ app.post('/isauthenticated', (req, res) => {
     }
 });
 
+// Middleware to check if user is a super admin before accessing certain routes
+const checkSuperAdmin = (req, res, next) => {
+    if (req.session.superAdmin) {
+        next();
+    } else {
+        res.json({ message: `You are not a Super-Admin sorry! Toggle Route to Send(Chat2) ⚠️` });
+    }
+};
 
-app.post('/chat', async (req, res) => {
+
+
+app.post('/chat', checkSuperAdmin, async (req, res) => {
     const userMessage = req.body.message;
 
     try {
@@ -275,6 +347,12 @@ app.post('/chat', async (req, res) => {
         // Extract GPT AI response from completion
         const gptResponse = completion.choices[0].message.content;
 
+        // Encrypt or hash the SecretKey
+        //const encryptedUserId = hashedSecretKey; //////////////////
+
+        // Get the password used by the user from the session
+        const userval2 = req.session.password;
+
         // Send GPT AI response back to client
         res.json({ message: gptResponse });
 
@@ -282,7 +360,8 @@ app.post('/chat', async (req, res) => {
         const chat = {
             date: new Date(),
             user: userMessage,
-            gpt: gptResponse
+            gpt: gptResponse,
+            EnigmaID: userval2  // Add encrypted userid to chat object
         };
 
         // Save the chat to MongoDB
@@ -338,11 +417,18 @@ app.post('/chat2', async (req, res) => {
         const result = await chat.sendMessage(message);
         const geminiResponse = result.response.text();
 
+        // Encrypt or hash the SecretKey
+       // const encryptedUserId = hashedSecretKey;
+
+        // Get the password used by the user from the session
+        const userval2 = req.session.password;
+
         // Save relevant information to MongoDB
         const chatData = {
             userMessage: message,
             geminiResponse: geminiResponse,
-            date: new Date() // Current date and time
+            date: new Date(), // Current date and time
+            EnigmaID: userval2
         };
 
         // Save Gemini response in 'gemini' collection
@@ -381,17 +467,25 @@ async function generateText(prompt) {
     }
 }
 
-app.post('/chat3', async (req, res) => {
+
+app.post('/chat3', checkSuperAdmin, async (req, res) => {
     const { message } = req.body;
 
     try {
         const responseText = await generateText(message);
 
+        // Encrypt or hash the SecretKey
+        //const encryptedUserId = process.env.SecretKey;   /////////
+
+        // Get the password used by the user from the session
+        const userval2 = req.session.password;
+
         // Save relevant information to MongoDB
         const chatData = {
             userMessage: message,
             claudeResponse: responseText,
-            date: new Date() // Current date and time
+            date: new Date(), // Current date and time
+            EnigmaID: userval2
         };
 
         // Save Claude AI response in 'claudeai' collection
@@ -408,8 +502,11 @@ app.post('/chat3', async (req, res) => {
 
 
 
+
 // Start the server
 
 app.listen(port, host, () => {
+
     console.log(`Server is running @ http://localhost:${port}/`);
+
 });
