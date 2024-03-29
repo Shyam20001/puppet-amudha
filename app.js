@@ -283,7 +283,7 @@ app.get('/', (req, res) => {
 app.post('/isauthenticated', (req, res) => {
     // Get the value of SecretKey and SuperAdminMasterKey from the environment variables
     const secretKey = process.env.SecretKey;
-    const superAdminMasterKey = process.env.SuperAdminMasterKey;
+    const superAdminMasterKey = process.env.superAdminMasterKey;
 
     // Split the value into individual passwords
     const passwords = secretKey.split(",");
