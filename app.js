@@ -209,6 +209,19 @@ app.use((req, res, next) => {
     next();
 });
 
+// Function to Check session and Enigma id present or not.
+function checkAuthentication(req, res, next) {
+    const userval2 = req.session.password;
+
+    // Check if the user is authenticated
+    if (!userval2) {
+        return res.json({ message: "Your session has expired. Please refresh the page and log in again ⏳" });
+    }
+
+    // User is authenticated, proceed to the next middleware or route handler
+    next();
+}
+
 
 app.get('/', (req, res) => {
 
@@ -334,7 +347,7 @@ const checkSuperAdmin = (req, res, next) => {
 
 
 
-app.post('/chat', checkSuperAdmin, async (req, res) => {
+app.post('/chat',checkAuthentication, checkSuperAdmin, async (req, res) => {
     const userMessage = req.body.message;
 
     try {
@@ -376,7 +389,7 @@ app.post('/chat', checkSuperAdmin, async (req, res) => {
 
 // Gemini Ai
 
-app.post('/chat2', async (req, res) => {
+app.post('/chat2',checkAuthentication, async (req, res) => {
     const { message } = req.body;
     const genAI = new GoogleGenerativeAI(API_KEY);
     const model = genAI.getGenerativeModel({ model: MODEL_NAME });
@@ -468,7 +481,7 @@ async function generateText(prompt) {
 }
 
 
-app.post('/chat3', checkSuperAdmin, async (req, res) => {
+app.post('/chat3',checkAuthentication, checkSuperAdmin, async (req, res) => {
     const { message } = req.body;
 
     try {
