@@ -1,7 +1,11 @@
 // Import required modules
 import Express from 'express';
+import { rateLimit } from 'express-rate-limit'
+import helmet from 'helmet';
 import OpenAI from 'openai';
 import axios from 'axios';
+import { createTerminus } from '@godaddy/terminus';
+
 //import bcrypt from 'bcrypt'
 import dotenv from 'dotenv';
 import bodyParser from 'body-parser';
@@ -81,6 +85,31 @@ const port = process.env.PORT
 const host = process.env.HOST
 // Use Helmet.js middleware
 //app.use(helmet());
+app.use(
+    helmet({
+        contentSecurityPolicy: {
+            directives: {
+                defaultSrc: ["'self'"],
+                scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://cdn.jsdelivr.net", "https://code.jquery.com"],
+                //connectSrc: ["'self'", 'api.anthropic.com'], // Allow connections to the Claude AI API
+                // Add other necessary directives based on your requirements
+            },
+        },
+    })
+);
+
+// Rate Limiter
+
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    limit: 100, // Limit each IP to 100 requests per `window` (here, per 15 minutes).
+    standardHeaders: 'draft-7', // draft-6: `RateLimit-*` headers; draft-7: combined `RateLimit` header
+    legacyHeaders: false, // Disable the `X-RateLimit-*` headers.
+    // store: ... , // Redis, Memcached, etc. See below.
+})
+
+// Apply the rate limiting middleware to all requests.
+app.use(limiter)
 
 
 app.set('view engine', 'pug');
@@ -209,19 +238,14 @@ app.use((req, res, next) => {
     next();
 });
 
-// Function to Check session and Enigma id present or not.
-function checkAuthentication(req, res, next) {
-    const userval2 = req.session.password;
+// Logs on CLI
 
-    // Check if the user is authenticated
-    if (!userval2) {
-        return res.json({ message: "Your session has expired. Please refresh the page and log in again ⏳" });
-    }
+app.use((req, res, next) => {
+    console.log(`${new Date()} *** ${req.method} ${req.url}`)
+    next()
+})
 
-    // User is authenticated, proceed to the next middleware or route handler
-    next();
-}
-
+// GET
 
 app.get('/', (req, res) => {
 
@@ -291,6 +315,21 @@ app.get('/', (req, res) => {
 
 
 
+// Middleware function to check if the user is authenticated
+
+// Function to Check session and Enigma id present or not.
+function checkAuthentication(req, res, next) {
+    const userval2 = req.session.password;
+
+    // Check if the user is authenticated
+    if (!userval2) {
+        return res.json({ message: "Your session has expired. Please refresh the page and log in again ⏳" });
+    }
+
+    // User is authenticated, proceed to the next middleware or route handler
+    next();
+}
+
 
 /**SUPER-MASTER ADMIN ROUTE implementation */
 app.post('/isauthenticated', (req, res) => {
@@ -347,7 +386,7 @@ const checkSuperAdmin = (req, res, next) => {
 
 
 
-app.post('/chat',checkAuthentication, checkSuperAdmin, async (req, res) => {
+app.post('/chat', checkAuthentication, checkSuperAdmin, async (req, res) => {
     const userMessage = req.body.message;
 
     try {
@@ -389,7 +428,7 @@ app.post('/chat',checkAuthentication, checkSuperAdmin, async (req, res) => {
 
 // Gemini Ai
 
-app.post('/chat2',checkAuthentication, async (req, res) => {
+app.post('/chat2', checkAuthentication, async (req, res) => {
     const { message } = req.body;
     const genAI = new GoogleGenerativeAI(API_KEY);
     const model = genAI.getGenerativeModel({ model: MODEL_NAME });
@@ -431,7 +470,7 @@ app.post('/chat2',checkAuthentication, async (req, res) => {
         const geminiResponse = result.response.text();
 
         // Encrypt or hash the SecretKey
-       // const encryptedUserId = hashedSecretKey;
+        // const encryptedUserId = hashedSecretKey;
 
         // Get the password used by the user from the session
         const userval2 = req.session.password;
@@ -481,7 +520,7 @@ async function generateText(prompt) {
 }
 
 
-app.post('/chat3',checkAuthentication, checkSuperAdmin, async (req, res) => {
+app.post('/chat3', checkAuthentication, checkSuperAdmin, async (req, res) => {
     const { message } = req.body;
 
     try {
@@ -515,11 +554,82 @@ app.post('/chat3',checkAuthentication, checkSuperAdmin, async (req, res) => {
 
 
 
+const serverStartTime = Date.now(); // Get the current timestamp in milliseconds
+const serverCreatedBy = 'Shyam. M Node.js Architect @2024March20';
 
-// Start the server
+const formatUptime = (uptime) => {
+    const seconds = Math.floor(uptime / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
 
-app.listen(port, host, () => {
+    return `${days} days, ${hours % 24} hours, ${minutes % 60} minutes, ${seconds % 60} seconds`;
+};
 
-    console.log(`Server is running @ http://localhost:${port}/`);
 
+const healthCheck = () => {
+    return new Promise((resolve, reject) => {
+        // Check server lifecycle
+        const serverUptime = Date.now() - serverStartTime;
+
+        // Additional health checks can be performed here
+
+        // Resolve if all checks pass
+        resolve({
+            serverUptime,
+            serverCreatedBy
+        });
+    });
+};
+
+
+const terminusHealthCheck = async () => {
+    const result_1 = await healthCheck();
+    // Format server uptime
+    result_1.serverUptime = formatUptime(result_1.serverUptime);
+    return result_1;
+};
+
+
+
+
+// SPIN UP THE BEAST 🔥
+const server = app.listen(port, () => {
+    console.log(`Server is running @ http://localhost:${port}/  pid-${process.pid}  ppid-${process.ppid}`);
+});
+
+
+
+const onSignal = async () => {
+    console.log('Received kill signal, shutting down gracefully');
+
+    // Prevent new requests from being accepted
+    server.close((err) => {
+        if (err) {
+            console.error('Error closing server:', err);
+            process.exit(1);
+        }
+        console.log('Closed out remaining connections');
+        console.log('Server shut down gracefully');
+        process.exit(0);
+    });
+
+
+    // Forcefully shut down server after 30 seconds
+    setTimeout(() => {
+        console.error('Could not close connections in time, forcefully shutting down');
+        process.exit(1);
+    }, 30000); // 30 seconds
+};
+
+
+
+
+
+createTerminus(server, {
+    signals: ['SIGTERM', 'SIGINT'],
+    healthChecks: {
+        '/health': terminusHealthCheck
+    },
+    onSignal
 });
