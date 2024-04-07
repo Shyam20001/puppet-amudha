@@ -2,8 +2,12 @@ doctype html
 html
   head
     title Enter Secret Key
+    link(href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css", rel="stylesheet", integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z", crossorigin="anonymous")
     style.
       /* Add your CSS styles here */
+      body {
+        background-color: #f0f0f0; /* Light white background */
+      }
       .center {
         text-align: center;
         margin-top: 50px;
@@ -11,16 +15,29 @@ html
       form {
         display: inline-block;
       }
-      input[type="text"] {
+      input[type="password"] {
+        width: 200px; /* Adjust the width as needed */
         margin-right: 10px;
+        border-radius: 10px; /* Add border-radius for rounded corners */
+        padding: 10px; /* Add padding for spacing inside the input field */
+        font-size: 16px; /* Increase font size */
+      }
+      button[type="submit"] {
+        border-radius: 10px; /* Add border-radius for rounded corners */
+        padding: 10px 20px; /* Add padding for spacing inside the button */
+        font-size: 16px; /* Increase font size */
       }
   body
     .center
       h1 Enter Secret Key
+      br
       form(id="secretForm", method="POST", action="/isauthenticated", autocomplete="off")
-        label(for="userval") Secret Key:
+        label(for="userval") 
         input(type="password", id="userval", name="userval", autocomplete="off")
+        | &nbsp;
         button(type="submit") Submit
+
+
 
 
     //- if authenticated
