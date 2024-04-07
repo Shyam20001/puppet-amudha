@@ -5,7 +5,23 @@ html(lang="en")
     meta(name="viewport", content="width=device-width, initial-scale=1.0")
     title Shyam-Model_Data
     script(src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js") // Include Axios for HTTP requests
+    script(src="https://code.jquery.com/jquery-3.6.0.min.js")
+     link(href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css", rel="stylesheet", integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z", crossorigin="anonymous")
     style.
+
+     .dark-mode {
+        background-color: #333;
+        color: #fff;
+      }
+
+      .dark-mode button {
+        background-color: #444;
+        color: #fff;
+        border: none;
+        padding: 10px 20px;
+        cursor: pointer;
+        transition: background-color 0.3s, color 0.3s;
+      }
       .message {
         margin-bottom: 10px;
         padding: 10px;
@@ -36,6 +52,7 @@ html(lang="en")
         transition: all 0.3s ease;
         padding: 20px;
         width: 100px;
+        border-radius: 20px 10px 20px 10px
       }
       #message-form button:hover {
         background-color: #007bff;
@@ -47,11 +64,14 @@ html(lang="en")
       // Chat messages will be displayed here
     form#message-form
       .input-group.mb-3
-        textarea#user-message.form-control(type="text", placeholder="Type your message...", autocomplete="off")
+        textarea#user-message.form-control(type="text", placeholder="Type your message...", autocomplete="off", style="width: 50%; height: 100px; background-color: #4d4d4d; border-radius: 5px; color: white; font-size: 16px;")
         .input-group-append
           button.btn.btn-primary(type="submit", id="send-button") Send
           | &nbsp;
           button.btn.btn-secondary(type="button", id="toggle-route-button") Toggle Route
+          |&nbsp; 
+          button.btn.btn-secondary(type="button", id="dark-mode-toggle") Dark Mode
+
   script.
     const chatContainer = document.getElementById('chat-container');
     const messageForm = document.getElementById('message-form');
@@ -59,11 +79,22 @@ html(lang="en")
     const toggleRouteButton = document.getElementById('toggle-route-button');
     let activeRoute = '/chat';
     
+
+     $(document).ready(function() {
+        const darkMode = localStorage.getItem('darkMode') === 'true';
+        $('body').toggleClass('dark-mode', darkMode);
+        $('#dark-mode-toggle').on('click', function() {
+          const isDarkMode = $('body').toggleClass('dark-mode').hasClass('dark-mode');
+          localStorage.setItem('darkMode', isDarkMode);
+        });
+      })
+    
     messageForm.addEventListener('submit', async (event) => {
         event.preventDefault();
         
         const userMessage = document.getElementById('user-message').value;
         appendMessage('user', userMessage);
+        
         
         try {
             const response = await axios.post(activeRoute, { message: userMessage });
