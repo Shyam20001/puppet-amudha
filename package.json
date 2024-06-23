@@ -6,7 +6,8 @@
   "scripts": {
     "minify": "terser app.js --output Production/main.min.js --mangle --source-map \"url=main.min.js.map\"",
     "start": "node Production/main.min.js",
-    "dev": "nodemon app.js"
+    "dev": "nodemon app.js",
+    "install-chrome": "npx puppeteer browsers install chrome"
   },
   "keywords": [],
   "author": "",
