@@ -1,0 +1,26 @@
+doctype html
+html
+  head
+    title ChatGPT Interaction
+    script.
+      const form = document.querySelector('form');
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const prompt = document.getElementById('prompt').value;  
+        const responseDiv = document.getElementById('response');
+        responseDiv.textContent = 'Loading...';
+        try {
+          const response = await fetch(`/chat?prompt=${encodeURIComponent(prompt)}`);
+          const text = await response.text();
+          responseDiv.textContent = text;
+        } catch (error) {
+          responseDiv.textContent = 'Error: ' + error.message;
+        }
+      });
+  body
+    h1 ChatGPT Interaction
+    form(action="/chat" method="get")
+      label(for="prompt") Enter your prompt:
+      textarea(id="prompt" name="prompt" rows="4" required)
+      button(type="submit") Send
+    div#response
