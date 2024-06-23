@@ -1,26 +1,95 @@
+//- doctype html
+//- html
+//-   head
+//-     title ChatGPT Interaction
+//-     script.
+//-       const form = document.querySelector('form');
+//-       form.addEventListener('submit', async (event) => {
+//-         event.preventDefault();
+//-         const prompt = document.getElementById('prompt').value;  
+//-         const responseDiv = document.getElementById('response');
+//-         responseDiv.textContent = 'Loading...';
+//-         try {
+//-           const response = await fetch(`/chat?prompt=${encodeURIComponent(prompt)}`);
+//-           const text = await response.text();
+//-           responseDiv.textContent = text;
+//-         } catch (error) {
+//-           responseDiv.textContent = 'Error: ' + error.message;
+//-         }
+//-       });
+//-   body
+//-     h1 ChatGPT Interaction
+//-     form(action="/chat" method="get")
+//-       label(for="prompt") Enter your prompt:
+//-       textarea(id="prompt" name="prompt" rows="4" required)
+//-       button(type="submit") Send
+//-     div#response
+
+
 doctype html
 html
   head
     title ChatGPT Interaction
+    style.
+      body {
+        font-family: Arial, sans-serif;
+      }
+      .chat-container {
+        width: 60%;
+        margin: 0 auto;
+      }
+      .chat-box {
+        border: 1px solid #ccc;
+        padding: 10px;
+        margin-bottom: 10px;
+        border-radius: 5px;
+        background-color: #f9f9f9;
+      }
+      .user-prompt {
+        font-weight: bold;
+      }
+      .loading {
+        color: gray;
+      }
+  body
+    .chat-container
+      h1 ChatGPT Interaction
+      form#chat-form
+        label(for="prompt") Enter your prompt:
+        textarea(id="prompt" name="prompt" rows="4" required)
+        button(type="submit") Send
+      div#response-container
     script.
-      const form = document.querySelector('form');
-      form.addEventListener('submit', async (event) => {
+      document.getElementById('chat-form').addEventListener('submit', async (event) => {
         event.preventDefault();
-        const prompt = document.getElementById('prompt').value;  
-        const responseDiv = document.getElementById('response');
-        responseDiv.textContent = 'Loading...';
+        const prompt = document.getElementById('prompt').value;
+        const responseContainer = document.getElementById('response-container');
+
+        // Create and add user prompt to the chat
+        const userPromptDiv = document.createElement('div');
+        userPromptDiv.className = 'chat-box user-prompt';
+        userPromptDiv.textContent = 'You: ' + prompt;
+        responseContainer.appendChild(userPromptDiv);
+
+        // Clear the textarea
+        document.getElementById('prompt').value = '';
+
+        // Create and add loading text
+        const loadingDiv = document.createElement('div');
+        loadingDiv.className = 'chat-box loading';
+        loadingDiv.textContent = 'Loading...';
+        responseContainer.appendChild(loadingDiv);
+
         try {
           const response = await fetch(`/chat?prompt=${encodeURIComponent(prompt)}`);
           const text = await response.text();
-          responseDiv.textContent = text;
+
+          // Create and add ChatGPT response
+          const chatGPTDiv = document.createElement('div');
+          chatGPTDiv.className = 'chat-box';
+          chatGPTDiv.innerHTML = 'ChatGPT: ' + text; // Use innerHTML to properly render HTML content
+          responseContainer.replaceChild(chatGPTDiv, loadingDiv); // Replace loading text with the response
         } catch (error) {
-          responseDiv.textContent = 'Error: ' + error.message;
+          loadingDiv.textContent = 'Error: ' + error.message;
         }
       });
-  body
-    h1 ChatGPT Interaction
-    form(action="/chat" method="get")
-      label(for="prompt") Enter your prompt:
-      textarea(id="prompt" name="prompt" rows="4" required)
-      button(type="submit") Send
-    div#response

@@ -79,3 +79,6 @@ function extractTextFromPTags(html) {
   }
   return texts;
 }
+
+
+//https://github.com/amamenko/puppeteer-render/blob/main/Dockerfile
